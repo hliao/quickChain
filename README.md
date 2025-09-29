@@ -18,14 +18,16 @@ It provides low-latency consensus, flexible data storage, and scalable architect
 ## 📂 Project Structure
 
 ```
-quick-chain/
-├── cmd/                # Command-line tools (quickchaind, quickchaincli)
-├── consensus/          # Consensus engine implementation
-├── core/               # Core blockchain logic
-├── db/                 # Database layer (state storage, key-value engine)
-├── rpc/                # gRPC & REST API services
-├── scripts/            # Helper scripts (build, deploy, testnet setup)
-└── README.md           # Project documentation
+quickChain/
+├── app/                # ABCI application (CounterApp)
+├── cmd/
+│   └── quickchaincli/  # CLI main that runs the ABCI server
+├── config/             # Node/app configuration (placeholder)
+├── tests/              # Tests (placeholder)
+├── types/              # Shared types (placeholder)
+├── go.mod
+├── go.sum
+└── README.md
 ```
 
 ---
@@ -34,25 +36,38 @@ quick-chain/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-org/quick-chain.git
-cd quick-chain
+git clone https://github.com/your-org/quickChain.git
+cd quickChain
 ```
 
-### 2. Build from Source
+### 2. Run Guide (start CometBFT first)
 ```bash
-make build
-```
+# Install CometBFT
+go install github.com/cometbft/cometbft/cmd/cometbft@v1.0.1
 
-### 3. Run a Local Node
-```bash
-./bin/quickchaind start
-```
+# Initialize a local node (once)
+$(go env GOPATH)/bin/cometbft init
 
-### 4. Interact via CLI
-```bash
-./bin/quickchaincli status
-./bin/quickchaincli tx put key "hello" value "world"
-./bin/quickchaincli query get key "hello"
+# Terminal A: start CometBFT (defaults to proxy_app tcp://127.0.0.1:26658)
+$(go env GOPATH)/bin/cometbft start
+
+# Terminal B: run the ABCI app (CounterApp)
+go run ./cmd/quickchaincli
+
+# Terminal C: send a few transactions via RPC
+curl -s "http://localhost:26657/broadcast_tx_commit?tx=\"tx1\"" > /dev/null
+curl -s "http://localhost:26657/broadcast_tx_commit?tx=\"tx2\"" > /dev/null
+curl -s "http://localhost:26657/broadcast_tx_commit?tx=\"tx3\"" > /dev/null
+
+# Query current count (base64 -> text)
+curl -s "http://localhost:26657/abci_query?data=0x00" \
+| jq -r '.result.response.value' | base64 --decode; echo
+
+# (Optional) send 1000 tx sequentially (zsh/bash)
+for i in {1..1000}; do curl -s "http://localhost:26657/broadcast_tx_commit?tx=\"tx$i\"" > /dev/null; done
+
+# (Optional) send 1000 tx with concurrency 20
+seq 1 1000 | xargs -P 20 -I{} sh -c 'curl -s "http://localhost:26657/broadcast_tx_commit?tx=\"tx{}\"" > /dev/null'
 ```
 
 ---

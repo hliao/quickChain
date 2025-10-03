@@ -11,6 +11,8 @@ import (
 
 func main() {
 	demo := flag.Bool("demo", false, "run demo client instead of server")
+	transport := flag.String("transport", "socket", "ABCI transport: socket|grpc")
+	addr := flag.String("addr", "tcp://127.0.0.1:26658", "ABCI listen address")
 	flag.Parse()
 
 	if *demo {
@@ -21,11 +23,11 @@ func main() {
 	}
 
 	application := appmod.NewDataStoreApp()
-	srv, err := server.NewServer("tcp://127.0.0.1:26658", "socket", application)
+	srv, err := server.NewServer(*addr, *transport, application)
 	if err != nil {
 		log.Fatal(err)
 	} else {
-		log.Println("Server started")
+		log.Printf("Server started on %s (%s)", *addr, *transport)
 	}
 	srv.Start()
 	defer srv.Stop()
